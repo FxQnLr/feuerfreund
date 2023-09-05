@@ -1,6 +1,6 @@
 [package]
 name = "feuerfreund"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Imbue your discord voice chat with a crackling flame"
 
