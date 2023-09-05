@@ -60,7 +60,7 @@ async fn main() {
         .options(options)
         .token(env::var("TOKEN").expect("missing DISCORD_TOKEN"))
         .client_settings(|client| client.register_songbird())
-        .intents(serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::GUILD_VOICE_STATES)
+        .intents(serenity::GatewayIntents::GUILDS | serenity::GatewayIntents::GUILD_VOICE_STATES)
         .setup(move |ctx, ready, framework| {
             Box::pin(async move {
                 register(ctx, framework).await;

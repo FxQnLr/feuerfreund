@@ -1,6 +1,6 @@
 [package]
 name = "feuerfreund"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Imbue your discord voice chat with a crackling flame"
 
@@ -9,6 +9,7 @@ description = "Imbue your discord voice chat with a crackling flame"
 [dependencies]
 dotenvy = "0.15.7"
 poise = { version = "0.5.5", features = ["cache"] }
+rand = "0.8.5"
 serenity = { version = "0.11.6", default-features = false, features = ["http", "native_tls_backend", "voice"] }
 songbird = "0.3.2"
 time = { version = "0.3.28", features = ["macros"] }
