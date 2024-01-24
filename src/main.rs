@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use serenity::{prelude::{GatewayIntents, Context}, client::ClientBuilder, all::{GuildId, OnlineStatus}, gateway::ActivityData};
-use tokio::spawn;
 use tracing::{info, debug, warn};
 use tracing_subscriber::{filter::LevelFilter, EnvFilter, prelude::*, fmt::{self, time::UtcTime}};
 use poise::Framework;
@@ -69,9 +66,9 @@ async fn main() -> color_eyre::Result<()> {
                 }
                 info!("registered commands");
                 info!("logged in as {}#{:?}", ready.user.name, ready.user.discriminator);
-                let sctx = Arc::new(ctx.clone());
+                let ctx_us = ctx.clone();
                 let config_us = config_st.clone();
-                std::thread::spawn(move || update_status(sctx, config_us));
+                std::thread::spawn(move || update_status(&ctx_us, &config_us));
                 Ok(Data { config: config_st } )
             })
         })
@@ -102,14 +99,14 @@ async fn register_globally(ctx: &Context, framework: &Framework<Data, Box<dyn st
     poise::builtins::register_globally(ctx, &framework.options().commands).await
 }
 
-fn update_status(ctx: Arc<Context>, config: Config) {
+fn update_status(ctx: &Context, config: &Config) {
     loop {
         let stats = mcsc_query::basic_stats(&config.mc_server_ip);
         // info!(?stats);
         if stats.is_ok() {
-            ctx.set_presence(Some(ActivityData::custom("server online")), OnlineStatus::Online)
+            ctx.set_presence(Some(ActivityData::custom("server online")), OnlineStatus::Online);
         } else {
-            ctx.set_presence(Some(ActivityData::custom("server offline")), OnlineStatus::DoNotDisturb)
+            ctx.set_presence(Some(ActivityData::custom("server offline")), OnlineStatus::DoNotDisturb);
         };
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
