@@ -16,4 +16,4 @@ tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "time"] }
-mcsc-query = { path = "../mcsc-query", version = "*" }
+mcsc-query = { git = "https://github.com/FxQnLr/mcsc-query", branch = "main" }

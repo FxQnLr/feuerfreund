@@ -910,6 +910,7 @@ dependencies = [
 [[package]]
 name = "mcsc-query"
 version = "0.1.0"
+source = "git+https://github.com/FxQnLr/mcsc-query?branch=main#67e84de24d6e1aa619464694c9dad4ccac40e9ca"
 dependencies = [
  "binrw",
  "rand",
