@@ -1,5 +1,10 @@
-use serenity::{prelude::{GatewayIntents, Context}, client::ClientBuilder, all::{GuildId, OnlineStatus}, gateway::ActivityData};
-use tracing::{info, debug, warn};
+use serenity::{
+    prelude::{GatewayIntents, Context},
+    client::ClientBuilder,
+    all::{GuildId, OnlineStatus},
+    gateway::ActivityData
+};
+use tracing::{info, warn};
 use tracing_subscriber::{filter::LevelFilter, EnvFilter, prelude::*, fmt::{self, time::UtcTime}};
 use poise::Framework;
 
@@ -40,7 +45,7 @@ async fn main() -> color_eyre::Result<()> {
     let config = Config::load()?;
     let config_st = config.clone();
 
-    info!("start feuerfreund v{VERSION}");
+    info!(VERSION, "feuerfreund");
 
     let framework = poise::Framework::builder()
         .options(
@@ -48,10 +53,13 @@ async fn main() -> color_eyre::Result<()> {
                 commands: vec![
                     commands::help(),
                     commands::minecraft(),
+                    commands::fire(),
                 ],
                 pre_command: |ctx| {
                     Box::pin(async move {
-                        debug!("executing command {} by {}", ctx.command().qualified_name, ctx.author().name);
+                        let command = &ctx.command().qualified_name;
+                        let author = &ctx.author().name;
+                        info!(command, author, "executing");
                     })
                 },
                 ..Default::default()
@@ -65,7 +73,9 @@ async fn main() -> color_eyre::Result<()> {
                     register_globally(ctx, framework).await?;
                 }
                 info!("registered commands");
-                info!("logged in as {}#{:?}", ready.user.name, ready.user.discriminator);
+                let client_name = &ready.user.name;
+                let client_disc = &ready.user.discriminator;
+                info!(client_name, client_disc, "logged in");
                 let ctx_us = ctx.clone();
                 let config_us = config_st.clone();
                 std::thread::spawn(move || update_status(&ctx_us, &config_us));
@@ -85,7 +95,11 @@ async fn main() -> color_eyre::Result<()> {
     Ok(())
 }
 
-async fn register_locally(ctx: &Context, framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>, guild_id: u64) -> Result<(), serenity::Error> {
+async fn register_locally(
+    ctx: &Context,
+    framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>,
+    guild_id: u64
+) -> Result<(), serenity::Error> {
     warn!("register commands locally");
     poise::builtins::register_in_guild(
         ctx,
@@ -94,7 +108,10 @@ async fn register_locally(ctx: &Context, framework: &Framework<Data, Box<dyn std
     ).await
 }
 
-async fn register_globally(ctx: &Context, framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>) -> Result<(), serenity::Error> {
+async fn register_globally(
+    ctx: &Context,
+    framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>
+) -> Result<(), serenity::Error> {
     info!("register commands globally");
     poise::builtins::register_globally(ctx, &framework.options().commands).await
 }
@@ -106,7 +123,10 @@ fn update_status(ctx: &Context, config: &Config) {
         if stats.is_ok() {
             ctx.set_presence(Some(ActivityData::custom("server online")), OnlineStatus::Online);
         } else {
-            ctx.set_presence(Some(ActivityData::custom("server offline")), OnlineStatus::DoNotDisturb);
+            ctx.set_presence(
+                Some(ActivityData::custom("server offline")),
+                OnlineStatus::DoNotDisturb
+            );
         };
         std::thread::sleep(std::time::Duration::from_secs(10));
     }

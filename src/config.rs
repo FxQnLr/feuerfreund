@@ -13,8 +13,8 @@ impl Config {
     pub fn load() -> Result<Self, config::ConfigError> {
         let config = config::Config::builder()
             .set_default("ephemeral_replies", "true")?
-            .add_source(File::with_name("config.toml"))
-            .add_source(File::with_name("config.dev.toml"))
+            .add_source(File::with_name("config.toml").required(false))
+            .add_source(File::with_name("config.dev.toml").required(false))
             .add_source(config::Environment::with_prefix("FF").prefix_separator("_"))
             .build()?;
 

@@ -1,8 +1,10 @@
 mod help;
 mod minecraft;
+mod fire;
 
 pub use help::help;
 pub use minecraft::minecraft;
+pub use fire::fire;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, crate::Data, Error>;
