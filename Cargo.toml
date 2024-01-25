@@ -6,14 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-color-eyre = "0.6.2"
-config = "0.13.4"
-poise = "0.6.1"
-serde = "1.0.195"
-serenity = { version = "0.12.0", features = ["http"], default-features = false }
-time = { version = "0.3.31", features = ["macros"] }
-tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros"] }
-tracing = "0.1.40"
-tracing-appender = "0.2.3"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter", "time"] }
+color-eyre = "0.6"
+config = "0.13"
+poise = "0.6"
+serde = "1.0"
+serenity = { version = "0.12", features = ["http"], default-features = false }
+time = { version = "0.3", features = ["macros"] }
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros"] }
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 mcsc-query = { git = "https://github.com/FxQnLr/mcsc-query", branch = "main" }
