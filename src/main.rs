@@ -1,94 +1,133 @@
-use std::env;
+use serenity::{
+    prelude::{GatewayIntents, Context},
+    client::ClientBuilder,
+    all::{GuildId, OnlineStatus},
+    gateway::ActivityData
+};
+use tracing::{info, warn};
+use tracing_subscriber::{filter::LevelFilter, EnvFilter, prelude::*, fmt::{self, time::UtcTime}};
+use poise::Framework;
 
-use poise::{serenity_prelude as serenity, Framework};
-use songbird::SerenityInit;
-use time::UtcOffset;
-use tracing::{Level, info, debug};
-use tracing_subscriber::{fmt::time::OffsetTime, FmtSubscriber};
+use crate::config::Config;
 
-use feuerfreund::{commands, Data};
+mod commands;
+mod config;
 
-#[tokio::main]
-async fn main() {
-    dotenvy::dotenv().unwrap();
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-    let offset_var: i8 = env::var("TIME_OFFSET")
-        .unwrap_or("0".to_string())
-        .parse()
-        .unwrap();
-    let offset = UtcOffset::from_hms(offset_var, 0, 0).expect("invalid offset");
-    let time_format =
-        time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
-    let timer = OffsetTime::new(offset, time_format);
-
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .with_timer(timer)
-        .finish();
-
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-
-    info!("starting Feuerfreund v{}", env!("CARGO_PKG_VERSION"));
-    
-    let options = poise::FrameworkOptions {
-        commands: vec![
-            commands::help::help(),
-            commands::connect::connect(),
-            commands::disconnect::disconnect(),
-        ],
-        pre_command: |ctx| {
-            Box::pin(async move {
-                debug!("executing command {}", ctx.command().qualified_name);
-            })
-        },
-        post_command: |ctx| {
-            Box::pin(async move {
-                info!("executed command {}", ctx.command().qualified_name);
-            })
-        },
-        event_handler: |_ctx, event, _framework, _data| {
-            Box::pin(async move {
-                // TODO: handle events individually
-                debug!("got an event in event handler: {:?}", event.name());
-                Ok(())
-            })
-        },
-        ..Default::default()
-    };
-
-    let framework = poise::Framework::builder()
-        .options(options)
-        .token(env::var("TOKEN").expect("missing DISCORD_TOKEN"))
-        .client_settings(|client| client.register_songbird())
-        .intents(serenity::GatewayIntents::GUILDS | serenity::GatewayIntents::GUILD_VOICE_STATES)
-        .setup(move |ctx, ready, framework| {
-            Box::pin(async move {
-                register(ctx, framework).await;
-                info!("registered commands");
-                info!("logged in as {}#{}", ready.user.name, ready.user.discriminator);
-                Ok(Data {})
-            })
-        });
-
-    framework.run().await.unwrap();
+pub struct Data {
+    pub config: Config,
 }
 
-#[cfg(debug_assertions)]
-async fn register(ctx: &::serenity::prelude::Context, framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>) {
-    use tracing::warn;
-    use serenity::GuildId;
+#[tokio::main]
+async fn main() -> color_eyre::Result<()> {
 
+    color_eyre::install()?;
+
+    let time_format = time::macros::format_description!("[hour]:[minute]:[second]"); 
+
+    let file_appender = tracing_appender::rolling::never(".", "feuerfreund.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::registry()
+        .with(fmt::layer()
+            .with_writer(non_blocking)
+        )
+        .with(fmt::layer()
+            .with_timer(UtcTime::new(time_format))
+        )
+        .with(EnvFilter::builder()
+            .with_default_directive(LevelFilter::INFO.into())
+            .from_env_lossy(),
+        )
+        .try_init()?;
+
+    let config = Config::load()?;
+    let config_st = config.clone();
+
+    info!(VERSION, "feuerfreund");
+
+    let framework = poise::Framework::builder()
+        .options(
+            poise::FrameworkOptions {
+                commands: vec![
+                    commands::help(),
+                    commands::minecraft(),
+                    commands::fire(),
+                ],
+                pre_command: |ctx| {
+                    Box::pin(async move {
+                        let command = &ctx.command().qualified_name;
+                        let author = &ctx.author().name;
+                        info!(command, author, "executing");
+                    })
+                },
+                ..Default::default()
+            }
+        )
+        .setup(move |ctx, ready, framework| {
+            Box::pin(async move {
+                if let Some(guild_id) = config_st.dev_guild {
+                    register_locally(ctx, framework, guild_id).await?;
+                } else {
+                    register_globally(ctx, framework).await?;
+                }
+                info!("registered commands");
+                let client_name = &ready.user.name;
+                let client_disc = &ready.user.discriminator;
+                info!(client_name, client_disc, "logged in");
+                let ctx_us = ctx.clone();
+                let config_us = config_st.clone();
+                std::thread::spawn(move || update_status(&ctx_us, &config_us));
+                Ok(Data { config: config_st } )
+            })
+        })
+        .build();
+
+    let intents = GatewayIntents::non_privileged();
+
+    ClientBuilder::new(config.token, intents)
+        .framework(framework)
+        .await?
+        .start()
+        .await?;
+
+    Ok(())
+}
+
+async fn register_locally(
+    ctx: &Context,
+    framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>,
+    guild_id: u64
+) -> Result<(), serenity::Error> {
     warn!("register commands locally");
-    let guild_id = env::var("DEV_GUILD").expect("can't register without guild id");
     poise::builtins::register_in_guild(
         ctx,
         &framework.options().commands,
-        GuildId::from(guild_id.parse::<u64>().unwrap())
-    ).await.unwrap();
+        GuildId::from(guild_id)
+    ).await
 }
 
-#[cfg(not(debug_assertions))]
-async fn register(ctx: &::serenity::prelude::Context, framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>) {
+async fn register_globally(
+    ctx: &Context,
+    framework: &Framework<Data, Box<dyn std::error::Error + Send + Sync>>
+) -> Result<(), serenity::Error> {
     info!("register commands globally");
-    poise::builtins::register_globally(ctx, &framework.options().commands).await.unwrap();
+    poise::builtins::register_globally(ctx, &framework.options().commands).await
+}
+
+fn update_status(ctx: &Context, config: &Config) {
+    loop {
+        let stats = mcsc_query::basic_stats(&config.mc_server_ip);
+        // info!(?stats);
+        if stats.is_ok() {
+            ctx.set_presence(Some(ActivityData::custom("server online")), OnlineStatus::Online);
+        } else {
+            ctx.set_presence(
+                Some(ActivityData::custom("server offline")),
+                OnlineStatus::DoNotDisturb
+            );
+        };
+        std::thread::sleep(std::time::Duration::from_secs(10));
+    }
 }

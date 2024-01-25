@@ -1,4 +1,6 @@
-use crate::{Context, Error};
+use crate::VERSION;
+
+use super::{Context, Error};
 
 #[poise::command(
     slash_command,
@@ -10,8 +12,10 @@ pub async fn help(
     #[description = "Specific command to show help about"] command: Option<String>,
 ) -> Result<(), Error> {
 
+    let bottom = format!("Feuerfreund v{VERSION}");
+
     let config = poise::builtins::HelpConfiguration {
-        extra_text_at_bottom: "Feuerfreund v0.1.0",
+        extra_text_at_bottom: &bottom,
         ..Default::default()
     };
 
