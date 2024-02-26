@@ -31,7 +31,7 @@ async fn main() -> color_eyre::Result<()> {
 
     tracing_subscriber::registry()
         .with(fmt::layer()
-            .with_writer(non_blocking)
+            .with_writer(non_blocking).with_ansi(false)
         )
         .with(fmt::layer()
             .with_timer(UtcTime::new(time_format))
